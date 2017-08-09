@@ -11,17 +11,20 @@ extern "C" {
 #include <mutex>
 
 class H264_degrader{
-public:    
+public:
 
     AVFrame *encoder_frame;
     AVFrame *decoder_frame;
 
-  H264_degrader(size_t _width, size_t _height, size_t _bitrate, size_t quantization);
+    H264_degrader(size_t _width, size_t _height, size_t _bitrate, size_t quantization);
     ~H264_degrader();
 
     void bgra2yuv422p(uint8_t* input, AVFrame* outputFrame, size_t width, size_t height);
     void yuv422p2bgra(AVFrame* inputFrame, uint8_t* output, size_t width, size_t height);
-    
+
+    void yuyv2yuv420p(uint8_t * input, AVFrame * outputFrame, size_t width, size_t height);
+    //void yuv422p2bgra(AVFrame* inputFrame, uint8_t* output, size_t width, size_t height);
+
     void degrade(AVFrame *inputFrame, AVFrame *outputFrame);
 
 private:
@@ -34,7 +37,7 @@ private:
     const size_t height;
     const size_t bitrate;
     const size_t quantization;
-    
+
     size_t frame_count;
 
     AVCodec *encoder_codec;
@@ -44,12 +47,14 @@ private:
     AVCodecContext *decoder_context;
 
     AVCodecParserContext *decoder_parser;
-    
+
     AVPacket *encoder_packet;
     AVPacket *decoder_packet;
 
     SwsContext *bgra2yuv422p_context;
     SwsContext *yuv422p2bgra_context;
+
+    SwsContext *yuyv2yuv420p_context;
 };
 
 //#endif

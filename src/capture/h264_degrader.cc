@@ -39,6 +39,14 @@ void H264_degrader::yuv422p2bgra(AVFrame* inputFrame, uint8_t* output, size_t wi
   sws_scale(yuv422p2bgra_context, inData, inLinesize, 0, height, outputArray, outLinesize);
 }
 
+void H264_degrader::yuyv2yuv420p(uint8_t * input, AVFrame * outputFrame, size_t width, size_t height)
+{
+  uint8_t * inData[1] = { input };
+  int inLinesize[1] = { 2*width };
+
+  sws_scale(yuyv2yuv420p_context, inData, inLinesize, 0, height, outputFrame->data, outputFrame->linesize);
+}
+
 H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, size_t quantization) :
     width(_width),
     height(_height),
@@ -169,11 +177,11 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
   bgra2yuv422p_context = sws_getContext(width, height,
 				    AV_PIX_FMT_BGRA, width, height,
 				    AV_PIX_FMT_YUV422P, 0, 0, 0, 0);
+
   if (bgra2yuv422p_context == NULL) {
     std::cout << "BGRA to YUV422P context not found\n";
     throw;
   }
-
 
   yuv422p2bgra_context = sws_getContext(width, height,
 			    AV_PIX_FMT_YUV422P, width, height,
@@ -184,6 +192,14 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
     throw;
   }
 
+  yuyv2yuv420p_context = sws_getContext(width, height,
+				    AV_PIX_FMT_YUYV422, width, height,
+				    AV_PIX_FMT_YUV420P, 0, 0, 0, 0);
+
+  if (yuyv2yuv420p_context == NULL) {
+    std::cout << "YUYV to YUV420P context not found\n";
+    throw;
+  }
 }
 
 H264_degrader::~H264_degrader(){

@@ -11,6 +11,7 @@
 #include "file_descriptor.hh"
 #include "mmap_region.hh"
 #include "raster.hh"
+#include "h264_degrader.hh"
 
 static const std::unordered_map<std::string, uint32_t> PIXEL_FORMAT_STRS {
   { "NV12", V4L2_PIX_FMT_NV12 },
@@ -30,6 +31,8 @@ private:
   uint32_t pixel_format_;
   v4l2_buffer buffer_info_;
   int type_;
+
+  H264_degrader degrader_;
 
 public:
   Camera( const uint16_t width, const uint16_t height,

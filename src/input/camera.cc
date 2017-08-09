@@ -21,7 +21,8 @@ Camera::Camera( const uint16_t width, const uint16_t height,
                 const uint32_t pixel_format, const string device )
   : width_( width ), height_( height ),
     camera_fd_( SystemCall( "open camera", open( device.c_str(), O_RDWR ) ) ),
-    mmap_region_(), pixel_format_( pixel_format ), buffer_info_(), type_()
+    mmap_region_(), pixel_format_( pixel_format ), buffer_info_(), type_(),
+    degrader_( width_, height_, 5<<20, 48 )
 {
   v4l2_capability cap;
   SystemCall( "ioctl", ioctl( camera_fd_.fd_num(), VIDIOC_QUERYCAP, &cap ) );
@@ -89,29 +90,14 @@ void Camera::get_next_frame( BaseRaster & raster )
 
   switch( pixel_format_ ) {
   case V4L2_PIX_FMT_YUYV:
-    {
+  {
     uint8_t * src = mmap_region_->addr();
-    uint8_t * dst_y_start  = &raster.Y().at( 0, 0 );
-    uint8_t * dst_cb_start = &raster.U().at( 0, 0 );
-    uint8_t * dst_cr_start = &raster.V().at( 0, 0 );
 
-    const size_t y_plane_lenght = width_ * height_;
-
-    for ( size_t i = 0; i < y_plane_lenght; i++ ) {
-      dst_y_start[ i ] = src[ i << 1 ];
-    }
-
-    size_t i = 0;
-
-    for ( size_t row = 0; row < height_; row++ ) {
-      if ( row % 2 == 1 ) { continue; }
-
-      for ( size_t column = 0; column < width_ / 2; column++ ) {
-        dst_cb_start[ i ] = src[ row * width_ * 2 + column * 4 + 1 ];
-        dst_cr_start[ i ] = src[ row * width_ * 2 + column * 4 + 3 ];
-        i++;
-      }
-    }
+    degrader_.yuyv2yuv420p( src, degrader_.encoder_frame, width_, height_ );
+    degrader_.degrade( degrader_.encoder_frame, degrader_.decoder_frame );
+    memcpy( &raster.Y().at( 0, 0 ), degrader_.decoder_frame->data[ 0 ], width_ * height_ );
+    memcpy( &raster.U().at( 0, 0 ), degrader_.decoder_frame->data[ 1 ], width_ * height_ / 4 );
+    memcpy( &raster.V().at( 0, 0 ), degrader_.decoder_frame->data[ 2 ], width_ * height_ / 4 );
   }
 
   break;
