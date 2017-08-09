@@ -37,8 +37,9 @@ PKG_CHECK_MODULES([AVDEVICE], [libavdevice])
 
 AC_CONFIG_FILES([Makefile
          src/Makefile
-         src/capture/Makefile
-         src/display/Makefile
          src/util/Makefile
+         src/display/Makefile
+         src/input/Makefile
+         src/capture/Makefile
 	 ])
 AC_OUTPUT

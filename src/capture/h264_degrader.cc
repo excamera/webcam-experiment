@@ -25,12 +25,12 @@ void H264_degrader::bgra2yuv422p(uint8_t* input, AVFrame* outputFrame, size_t wi
   //std::lock_guard<std::mutex> guard(degrader_mutex);
   uint8_t * inData[1] = { input };
   int inLinesize[1] = { 4*width };
-  
+
   sws_scale(bgra2yuv422p_context, inData, inLinesize, 0, height, outputFrame->data, outputFrame->linesize);
 }
 
 void H264_degrader::yuv422p2bgra(AVFrame* inputFrame, uint8_t* output, size_t width, size_t height){
-  //std::lock_guard<std::mutex> guard(degrader_mutex);  
+  //std::lock_guard<std::mutex> guard(degrader_mutex);
   uint8_t * inData[3] = { inputFrame->data[0], inputFrame->data[1], inputFrame->data[2] };
   int inLinesize[3] = { width, width/2, width/2 };
   uint8_t * outputArray[1] = { output };
@@ -54,7 +54,7 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
         std::cout << "encoder_codec: " << codec_id << " not found!" << "\n";
         throw;
     }
-    
+
     decoder_codec = avcodec_find_decoder(codec_id);
     if(decoder_codec == NULL){
         std::cout << "decoder_codec: " << codec_id << " not found!" << "\n";
@@ -110,7 +110,7 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
         std::cout << "could not open encoder" << "\n";;
         throw;
     }
-    
+
     if(avcodec_open2(decoder_context, decoder_codec, NULL) < 0){
         std::cout << "could not open decoder" << "\n";;
         throw;
@@ -133,7 +133,7 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
         std::cout << "AVFrame not allocated: decoder" << "\n";
         throw;
     }
-    
+
     encoder_frame->width = width;
     encoder_frame->height = height;
     encoder_frame->format = pix_fmt;
@@ -176,7 +176,7 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
 
 
   yuv422p2bgra_context = sws_getContext(width, height,
-			    AV_PIX_FMT_YUV422P, width, height, 
+			    AV_PIX_FMT_YUV422P, width, height,
 			    AV_PIX_FMT_BGRA, 0, 0, 0, 0);
 
   if (yuv422p2bgra_context == NULL) {
@@ -216,7 +216,7 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
         throw;
     }
 
-    // copy frame into buffer 
+    // copy frame into buffer
     // TODO(jremons) make faster
     /*for(size_t y = 0; y < height; y++){
         for(size_t x = 0; x < width; x++){
@@ -259,7 +259,7 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
         buffer = std::move(std::shared_ptr<uint8_t>(new uint8_t[encoder_packet->size + AV_INPUT_BUFFER_PADDING_SIZE]));
         buffer_size = encoder_packet->size;
         std::memcpy(buffer.get(), encoder_packet->data, encoder_packet->size);
-        
+
         if(count > 0){
             std::cout << "error! multiple parsing passing!" << "\n";
             throw;
@@ -267,21 +267,21 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
         count += 1;
     }
     av_packet_unref(encoder_packet);
-    
+
     // decode frame
     uint8_t *data = buffer.get();
     int data_size = buffer_size;
     while(data_size > 0){
         size_t ret1 = av_parser_parse2(decoder_parser,
-                                       decoder_context, 
-                                       &decoder_packet->data, 
+                                       decoder_context,
+                                       &decoder_packet->data,
                                        &decoder_packet->size,
                                        data,
                                        data_size,
-                                       AV_NOPTS_VALUE, 
-                                       AV_NOPTS_VALUE, 
+                                       AV_NOPTS_VALUE,
+                                       AV_NOPTS_VALUE,
                                        0);
-        
+
         if(ret1 < 0){
             std::cout << "error while parsing the buffer: decoding" << "\n";
             throw;
@@ -293,7 +293,7 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
         if(decoder_packet->size > 0){
             if(avcodec_send_packet(decoder_context, decoder_packet) < 0){
                 std::cout << "error while decoding the buffer: send_packet" << "\n";
-                throw;                
+                throw;
             }
 
             size_t ret2 = avcodec_receive_frame(decoder_context, outputFrame);
@@ -304,7 +304,7 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
                 std::cout << "error during decoding: receive frame" << "\n";
                 throw;
             }
-            
+
             // copy output in output_buffer
             // TODO(jremmons) make faster
             /*for(size_t y = 0; y < height; y++){
@@ -328,7 +328,7 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
         std::memset(outputFrame->data[0], 255, width*height);
         std::memset(outputFrame->data[1], 128, width*height/2);
         std::memset(outputFrame->data[2], 128, width*height/2);
-	
+
         // make white if output not set
         /*std::memset(output[0], 255, width*height);
         std::memset(output[1], 128, width*height/2);
@@ -338,4 +338,3 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
 
     frame_count += 1;
 }
-
