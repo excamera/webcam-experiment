@@ -38,7 +38,7 @@ public:
 
   ~Camera();
 
-  BaseRaster get_next_frame();
+  void get_next_frame( BaseRaster & raster );
 
   uint16_t display_width() { return width_; }
   uint16_t display_height() { return height_; }

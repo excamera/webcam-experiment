@@ -79,10 +79,8 @@ Camera::~Camera()
   SystemCall( "stream off", ioctl( camera_fd_.fd_num(), VIDIOC_STREAMOFF, &type_ ) );
 }
 
-BaseRaster Camera::get_next_frame()
+void Camera::get_next_frame( BaseRaster & raster )
 {
-  BaseRaster raster { width_, height_, width_, height_ };
-
   buffer_info_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer_info_.memory = V4L2_MEMORY_MMAP;
   buffer_info_.index = 0;
@@ -147,6 +145,4 @@ BaseRaster Camera::get_next_frame()
   }
 
   SystemCall( "dequeue buffer", ioctl( camera_fd_.fd_num(), VIDIOC_DQBUF, &buffer_info_ ) );
-
-  return raster;
 }
