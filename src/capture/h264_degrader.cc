@@ -354,3 +354,113 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
 
     frame_count += 1;
 }
+
+MJPEGDecoder::MJPEGDecoder( const size_t width, const size_t height )
+  : width( width ), height()
+{
+  codec = avcodec_find_decoder( codec_id );
+  if ( codec == NULL ) {
+      std::cout << "codec: " << codec_id << " not found!" << "\n";
+      throw;
+  }
+
+  context = avcodec_alloc_context3( codec );
+  if ( context == NULL ) {
+      std::cout << "context: " << codec_id << " not found!" << "\n";
+      throw;
+  }
+
+  context->pix_fmt = pix_fmt;
+  context->width = width;
+  context->height = height;
+
+  if ( avcodec_open2( context, codec, NULL ) < 0 ) {
+      std::cout << "could not open decoder" << "\n";
+      throw;
+  }
+
+  parser = av_parser_init( codec->id );
+  if ( parser == NULL ) {
+    std::cout << "Decoder parser could not be initialized" << "\n";
+    throw;
+  }
+
+  frame = av_frame_alloc();
+  if ( frame == NULL ) {
+      std::cout << "AVFrame not allocated: decoder" << "\n";
+      throw;
+  }
+
+  frame->width = width;
+  frame->height = height;
+  frame->format = pix_fmt;
+  frame->pts = 0;
+
+  if ( av_frame_get_buffer( frame, 32 ) < 0 ) {
+      std::cout << "AVFrame could not allocate buffer: decoder" << "\n";
+      throw;
+  }
+
+  packet = av_packet_alloc();
+  if ( packet == NULL ) {
+      std::cout << "AVPacket not allocated: decoder" << "\n";
+      throw;
+  }
+}
+
+MJPEGDecoder::~MJPEGDecoder()
+{
+  av_parser_close( parser );
+  avcodec_free_context( &context );
+  av_frame_free( &frame );
+  av_packet_free( &packet );
+}
+
+void MJPEGDecoder::decode( uint8_t * data, size_t data_size, AVFrame * output )
+{
+  bool output_set = false;
+  while(data_size > 0){
+      size_t ret1 = av_parser_parse2(parser,
+                                     context,
+                                     &packet->data,
+                                     &packet->size,
+                                     data,
+                                     data_size,
+                                     AV_NOPTS_VALUE,
+                                     AV_NOPTS_VALUE,
+                                     0);
+
+      if(ret1 < 0){
+          std::cout << "error while parsing the buffer: decoding" << "\n";
+          throw;
+      }
+
+      data += ret1;
+      data_size -= ret1;
+
+      if(packet->size > 0){
+          if(avcodec_send_packet(context, packet) < 0){
+              std::cout << "error while decoding the buffer: send_packet" << "\n";
+              throw;
+          }
+
+          size_t ret2 = avcodec_receive_frame(context, output);
+          if (ret2 == AVERROR(EAGAIN) || ret2 == AVERROR_EOF){
+              continue;
+          }
+          else if (ret2 < 0) {
+              std::cout << "error during decoding: receive frame" << "\n";
+              throw;
+          }
+
+          output_set = true;
+      }
+  }
+  av_packet_unref(packet);
+
+  if ( !output_set ) {
+    std::memset(output->data[0], 255, width*height);
+    std::memset(output->data[1], 128, width*height/4);
+    std::memset(output->data[2], 128, width*height/4);
+  }
+}

@@ -57,4 +57,26 @@ private:
     SwsContext *yuyv2yuv420p_context;
 };
 
+class MJPEGDecoder
+{
+public:
+  AVFrame * frame;
+  MJPEGDecoder( const size_t width, const size_t height );
+  ~MJPEGDecoder();
+
+  void decode( uint8_t * data, size_t data_size, AVFrame * output );
+
+private:
+  const AVCodecID codec_id = AV_CODEC_ID_MJPEG;
+  const AVPixelFormat pix_fmt = AV_PIX_FMT_YUV420P;
+
+  const size_t width;
+  const size_t height;
+
+  AVCodec * codec;
+  AVCodecContext * context;
+  AVCodecParserContext *parser;
+  AVPacket * packet;
+};
+
 //#endif

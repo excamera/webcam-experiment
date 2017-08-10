@@ -16,7 +16,8 @@
 static const std::unordered_map<std::string, uint32_t> PIXEL_FORMAT_STRS {
   { "NV12", V4L2_PIX_FMT_NV12 },
   { "YUYV", V4L2_PIX_FMT_YUYV },
-  { "YU12", V4L2_PIX_FMT_YUV420 }
+  { "YU12", V4L2_PIX_FMT_YUV420 },
+  { "MJPEG", V4L2_PIX_FMT_MJPEG }
 };
 
 class Camera
@@ -33,6 +34,7 @@ private:
   int type_;
 
   H264_degrader degrader_;
+  MJPEGDecoder mjpeg_decoder_;
 
 public:
   Camera( const uint16_t width, const uint16_t height,
