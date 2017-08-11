@@ -406,6 +406,15 @@ MJPEGDecoder::MJPEGDecoder( const size_t width, const size_t height )
       std::cout << "AVPacket not allocated: decoder" << "\n";
       throw;
   }
+
+  yuvj422p2yuv420p_context = sws_getContext(width, height,
+					    AV_PIX_FMT_YUVJ422P, width, height,
+					    AV_PIX_FMT_YUV420P, SWS_FAST_BILINEAR, 0, 0, 0);
+
+  if ( yuvj422p2yuv420p_context == NULL) {
+    std::cout << "YUYV to YUV420P context not found\n";
+    throw;
+  }
 }
 
 MJPEGDecoder::~MJPEGDecoder()
@@ -414,6 +423,17 @@ MJPEGDecoder::~MJPEGDecoder()
   avcodec_free_context( &context );
   av_frame_free( &frame );
   av_packet_free( &packet );
+}
+
+void MJPEGDecoder::yuvj422p2yuv420p(AVFrame* inputFrame, uint8_t* output, size_t width, size_t height){
+  //std::lock_guard<std::mutex> guard(degrader_mutex);
+  //uint8_t * inData[3] = { inputFrame->data[0], inputFrame->data[1], inputFrame->data[2] };
+  //int inLinesize[3] = { width, width/2, width/2 };
+
+  uint8_t * outputArray[3] = { output, output + width * height, output + (width * height * 5) / 4 };
+  int outLinesize[3] = { width, width/2, width/2 };
+
+  sws_scale(yuvj422p2yuv420p_context, inputFrame->data, inputFrame->linesize, 0, height, outputArray, outLinesize);
 }
 
 void MJPEGDecoder::decode( uint8_t * data, size_t data_size, AVFrame * output )
@@ -463,4 +483,8 @@ void MJPEGDecoder::decode( uint8_t * data, size_t data_size, AVFrame * output )
     std::memset(output->data[1], 128, width*height/4);
     std::memset(output->data[2], 128, width*height/4);
   }
+
+  //yuvj422p2yuv420p( output, data, width, height );
+
+  std::cout << "decoder pixel format: " << context->pix_fmt << '\n';
 }

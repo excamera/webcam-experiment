@@ -15,7 +15,7 @@ int main( int argc, char const * argv[] )
 
   BaseRaster raster( width, height, width, height );
   VideoDisplay display( raster );
-  Camera camera( width, height, V4L2_PIX_FMT_MJPEG, "/dev/video1" );
+  Camera camera( width, height, V4L2_PIX_FMT_MJPEG, "/dev/video0" );
 
   while ( true ) {
     camera.get_next_frame( raster );

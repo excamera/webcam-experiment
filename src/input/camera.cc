@@ -96,11 +96,14 @@ void Camera::get_next_frame( BaseRaster & raster )
     uint8_t * src = mmap_region_->addr();
 
     mjpeg_decoder_.decode( src, buffer_info_.length, mjpeg_decoder_.frame );
-    //degrader_.degrade( mjpeg_decoder_.frame, degrader_.decoder_frame );
+    
+    //memcpy( &raster.Y().at( 0, 0 ), src, width_ * height_ );
+    //memcpy( &raster.U().at( 0, 0 ), src + width_ * height_, width_ * height_ / 4 );
+    //memcpy( &raster.V().at( 0, 0 ), src + width_ * height_ * 5 / 4, width_ * height_ / 4 );
 
     memcpy( &raster.Y().at( 0, 0 ), mjpeg_decoder_.frame->data[ 0 ], width_ * height_ );
-    memcpy( &raster.U().at( 0, 0 ), mjpeg_decoder_.frame->data[ 1 ], width_ * height_ / 4 );
-    memcpy( &raster.V().at( 0, 0 ), mjpeg_decoder_.frame->data[ 2 ], width_ * height_ / 4 );
+    //memcpy( &raster.U().at( 0, 0 ), mjpeg_decoder_.frame->data[ 1 ], width_ * height_ / 2 );
+    //memcpy( &raster.V().at( 0, 0 ), mjpeg_decoder_.frame->data[ 2 ], width_ * height_ / 2 );
   }
 
   break;
