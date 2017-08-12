@@ -9,6 +9,7 @@ extern "C" {
 }
 
 #include <mutex>
+#include "raster.hh"
 
 class H264_degrader{
 public:
@@ -61,6 +62,7 @@ class MJPEGDecoder
 {
 public:
   AVFrame * frame;
+  AVFrame * out_frame;
   MJPEGDecoder( const size_t width, const size_t height );
   ~MJPEGDecoder();
 
@@ -79,7 +81,7 @@ private:
   AVPacket * packet;
 
   SwsContext * yuvj422p2yuv420p_context;
-  void yuvj422p2yuv420p(AVFrame* inputFrame, uint8_t* output, size_t width, size_t height);
+  void yuvj422p2yuv420p(AVFrame* inputFrame, AVFrame * output);
 };
 
 //#endif

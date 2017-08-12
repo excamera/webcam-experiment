@@ -5,6 +5,7 @@
 #include <mutex>
 #include <chrono>
 #include "h264_degrader.hh"
+#include "raster.hh"
 
 #define PIX(x) (x < 0 ? 0 : (x > 255 ? 255 : x))
 
@@ -356,7 +357,7 @@ void H264_degrader::degrade(AVFrame *inputFrame, AVFrame *outputFrame){
 }
 
 MJPEGDecoder::MJPEGDecoder( const size_t width, const size_t height )
-  : width( width ), height()
+  : width( width ), height( height )
 {
   codec = avcodec_find_decoder( codec_id );
   if ( codec == NULL ) {
@@ -393,10 +394,26 @@ MJPEGDecoder::MJPEGDecoder( const size_t width, const size_t height )
 
   frame->width = width;
   frame->height = height;
-  frame->format = pix_fmt;
+  frame->format = AV_PIX_FMT_YUVJ422P;
   frame->pts = 0;
 
   if ( av_frame_get_buffer( frame, 32 ) < 0 ) {
+      std::cout << "AVFrame could not allocate buffer: decoder" << "\n";
+      throw;
+  }
+
+  out_frame = av_frame_alloc();
+  if ( out_frame == NULL ) {
+      std::cout << "AVFrame not allocated: decoder" << "\n";
+      throw;
+  }
+
+  out_frame->width = width;
+  out_frame->height = height;
+  out_frame->format = AV_PIX_FMT_YUV420P;
+  out_frame->pts = 0;
+
+  if ( av_frame_get_buffer( out_frame, 32 ) < 0 ) {
       std::cout << "AVFrame could not allocate buffer: decoder" << "\n";
       throw;
   }
@@ -409,7 +426,7 @@ MJPEGDecoder::MJPEGDecoder( const size_t width, const size_t height )
 
   yuvj422p2yuv420p_context = sws_getContext(width, height,
 					    AV_PIX_FMT_YUVJ422P, width, height,
-					    AV_PIX_FMT_YUV420P, SWS_FAST_BILINEAR, 0, 0, 0);
+					    AV_PIX_FMT_YUV420P, 0, 0, 0, 0);
 
   if ( yuvj422p2yuv420p_context == NULL) {
     std::cout << "YUYV to YUV420P context not found\n";
@@ -422,18 +439,15 @@ MJPEGDecoder::~MJPEGDecoder()
   av_parser_close( parser );
   avcodec_free_context( &context );
   av_frame_free( &frame );
+  av_frame_free( &out_frame );
   av_packet_free( &packet );
+  sws_freeContext( yuvj422p2yuv420p_context );
 }
 
-void MJPEGDecoder::yuvj422p2yuv420p(AVFrame* inputFrame, uint8_t* output, size_t width, size_t height){
-  //std::lock_guard<std::mutex> guard(degrader_mutex);
-  //uint8_t * inData[3] = { inputFrame->data[0], inputFrame->data[1], inputFrame->data[2] };
-  //int inLinesize[3] = { width, width/2, width/2 };
-
-  uint8_t * outputArray[3] = { output, output + width * height, output + (width * height * 5) / 4 };
-  int outLinesize[3] = { width, width/2, width/2 };
-
-  sws_scale(yuvj422p2yuv420p_context, inputFrame->data, inputFrame->linesize, 0, height, outputArray, outLinesize);
+void MJPEGDecoder::yuvj422p2yuv420p(AVFrame* inputFrame, AVFrame * output){
+  //uint8_t * odata[3] = { &output.Y().at( 0, 0 ), &output.U().at( 0, 0 ), &output.V().at( 0, 0 ) };
+  //int olinesize[3] = { width, width / 2, width / 2 };
+  sws_scale(yuvj422p2yuv420p_context, inputFrame->data, inputFrame->linesize, 0, height, output->data, output->linesize);
 }
 
 void MJPEGDecoder::decode( uint8_t * data, size_t data_size, AVFrame * output )
@@ -464,7 +478,7 @@ void MJPEGDecoder::decode( uint8_t * data, size_t data_size, AVFrame * output )
               throw;
           }
 
-          size_t ret2 = avcodec_receive_frame(context, output);
+          size_t ret2 = avcodec_receive_frame(context, frame);
           if (ret2 == AVERROR(EAGAIN) || ret2 == AVERROR_EOF){
               continue;
           }
@@ -479,12 +493,17 @@ void MJPEGDecoder::decode( uint8_t * data, size_t data_size, AVFrame * output )
   av_packet_unref(packet);
 
   if ( !output_set ) {
-    std::memset(output->data[0], 255, width*height);
-    std::memset(output->data[1], 128, width*height/4);
-    std::memset(output->data[2], 128, width*height/4);
+    std::memset(frame->data[0], 255, width*height);
+    std::memset(frame->data[1], 128, width*height/4);
+    std::memset(frame->data[2], 128, width*height/4);
   }
 
-  //yuvj422p2yuv420p( output, data, width, height );
+  yuvj422p2yuv420p(frame, output);
 
-  std::cout << "decoder pixel format: " << context->pix_fmt << '\n';
+  // memcpy( &output.Y().at( 0, 0 ), frame->data[0], width * height );
+  //
+  // for ( size_t i = 0; i < height / 2; i++ ) {
+  //   memcpy( &output.U().at( 0, i ), frame->data[ 1 ] + width * i , width / 2 );
+  //   memcpy( &output.V().at( 0, i ), frame->data[ 2 ] + width * i , width / 2 );
+  // }
 }

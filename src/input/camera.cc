@@ -23,7 +23,7 @@ Camera::Camera( const uint16_t width, const uint16_t height,
   : width_( width ), height_( height ),
     camera_fd_( SystemCall( "open camera", open( device.c_str(), O_RDWR ) ) ),
     mmap_region_(), pixel_format_( pixel_format ), buffer_info_(), type_(),
-    degrader_( width_, height_, 5<<20, 16 ),
+    degrader_( width_, height_, 5<<20, 48 ),
     mjpeg_decoder_( width_, height_ )
 {
   v4l2_capability cap;
@@ -89,21 +89,18 @@ void Camera::get_next_frame( BaseRaster & raster )
   buffer_info_.index = 0;
 
   SystemCall( "queue", ioctl( camera_fd_.fd_num(), VIDIOC_QBUF, &buffer_info_ ) );
+  SystemCall( "dequeue buffer", ioctl( camera_fd_.fd_num(), VIDIOC_DQBUF, &buffer_info_ ) );
 
   switch( pixel_format_ ) {
   case V4L2_PIX_FMT_MJPEG:
   {
     uint8_t * src = mmap_region_->addr();
+    mjpeg_decoder_.decode( src, buffer_info_.length, degrader_.encoder_frame );
+    degrader_.degrade( degrader_.encoder_frame, degrader_.decoder_frame );
 
-    mjpeg_decoder_.decode( src, buffer_info_.length, mjpeg_decoder_.frame );
-    
-    //memcpy( &raster.Y().at( 0, 0 ), src, width_ * height_ );
-    //memcpy( &raster.U().at( 0, 0 ), src + width_ * height_, width_ * height_ / 4 );
-    //memcpy( &raster.V().at( 0, 0 ), src + width_ * height_ * 5 / 4, width_ * height_ / 4 );
-
-    memcpy( &raster.Y().at( 0, 0 ), mjpeg_decoder_.frame->data[ 0 ], width_ * height_ );
-    //memcpy( &raster.U().at( 0, 0 ), mjpeg_decoder_.frame->data[ 1 ], width_ * height_ / 2 );
-    //memcpy( &raster.V().at( 0, 0 ), mjpeg_decoder_.frame->data[ 2 ], width_ * height_ / 2 );
+    memcpy( &raster.Y().at( 0, 0 ), degrader_.decoder_frame->data[0], width_ * height_ );
+    memcpy( &raster.U().at( 0, 0 ), degrader_.decoder_frame->data[1], width_ * height_ / 4 );
+    memcpy( &raster.V().at( 0, 0 ), degrader_.decoder_frame->data[2], width_ * height_ / 4 );
   }
 
   break;
@@ -148,6 +145,4 @@ void Camera::get_next_frame( BaseRaster & raster )
 
     break;
   }
-
-  SystemCall( "dequeue buffer", ioctl( camera_fd_.fd_num(), VIDIOC_DQBUF, &buffer_info_ ) );
 }
