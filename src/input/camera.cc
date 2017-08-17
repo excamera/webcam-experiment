@@ -19,11 +19,12 @@ unordered_set<uint32_t> SUPPORTED_FORMATS {
 };
 
 Camera::Camera( const uint16_t width, const uint16_t height,
+                const size_t bitrate, const size_t quantizer, 
                 const uint32_t pixel_format, const string device )
   : width_( width ), height_( height ),
     camera_fd_( SystemCall( "open camera", open( device.c_str(), O_RDWR ) ) ),
     mmap_region_(), pixel_format_( pixel_format ), buffer_info_(), type_(),
-    degrader_( width_, height_, 5<<20, 48 ),
+    degrader_( width_, height_, bitrate, quantizer ),
     mjpeg_decoder_( width_, height_ )
 {
   v4l2_capability cap;
@@ -95,8 +96,22 @@ void Camera::get_next_frame( BaseRaster & raster )
   case V4L2_PIX_FMT_MJPEG:
   {
     uint8_t * src = mmap_region_->addr();
+
+    auto decode_raster_t1 = std::chrono::high_resolution_clock::now();
     mjpeg_decoder_.decode( src, buffer_info_.length, degrader_.encoder_frame );
+    auto decode_raster_t2 = std::chrono::high_resolution_clock::now();
+    auto decode_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(decode_raster_t2 - decode_raster_t1);
+    std::cout << "decode_raster:\t" << decode_raster_time.count() << "\n";
+
+    auto degrade_raster_t1 = std::chrono::high_resolution_clock::now();
     degrader_.degrade( degrader_.encoder_frame, degrader_.decoder_frame );
+    auto degrade_raster_t2 = std::chrono::high_resolution_clock::now();
+    auto degrade_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(degrade_raster_t2 - degrade_raster_t1);
+    std::cout << "degrade_raster:\t" << degrade_raster_time.count() << "\n";
+
+    //memcpy( degrader_.decoder_frame->data[0], degrader_.encoder_frame->data[0], width_ * height_ );
+    //memcpy( degrader_.decoder_frame->data[1], degrader_.encoder_frame->data[1], width_ * height_ / 4 );
+    //memcpy( degrader_.decoder_frame->data[2], degrader_.encoder_frame->data[2], width_ * height_ / 4 );
 
     memcpy( &raster.Y().at( 0, 0 ), degrader_.decoder_frame->data[0], width_ * height_ );
     memcpy( &raster.U().at( 0, 0 ), degrader_.decoder_frame->data[1], width_ * height_ / 4 );

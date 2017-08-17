@@ -7,8 +7,6 @@
 #include "h264_degrader.hh"
 #include "raster.hh"
 
-#define PIX(x) (x < 0 ? 0 : (x > 255 ? 255 : x))
-
 extern "C" {
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -98,6 +96,7 @@ H264_degrader::H264_degrader(size_t _width, size_t _height, size_t _bitrate, siz
     encoder_context->qmax = quantization;
     encoder_context->qcompress = 0.5;
     av_opt_set(encoder_context->priv_data, "tune", "zerolatency", 0); // forces no frame buffer delay (https://stackoverflow.com/questions/10155099/c-ffmpeg-h264-creating-zero-delay-stream)
+    av_opt_set(encoder_context->priv_data, "preset", "veryfast", 0);
 
     // decoder context parameter
     decoder_context->pix_fmt = pix_fmt;

@@ -38,6 +38,7 @@ private:
 
 public:
   Camera( const uint16_t width, const uint16_t height,
+          const size_t bitrate, const size_t quantizer,
           const uint32_t pixel_format = V4L2_PIX_FMT_NV12,
           const std::string device = "/dev/video0" );
 
