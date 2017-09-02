@@ -26,6 +26,7 @@ PKG_CHECK_MODULES([AVUTIL], [libavutil])
 PKG_CHECK_MODULES([AVFILTER], [libavfilter])
 PKG_CHECK_MODULES([AVDEVICE], [libavdevice])
 PKG_CHECK_MODULES([SWSCALE], [libswscale])
+PKG_CHECK_MODULES([PULSE], [libpulse libpulse-simple])
 
 PKG_CHECK_MODULES([GL], [gl])
 PKG_CHECK_MODULES([GLU], [glu])
@@ -44,6 +45,7 @@ PKG_CHECK_MODULES([GLEW], [glew])
 AC_CONFIG_FILES([Makefile
          src/Makefile
          src/util/Makefile
+         src/audiotest/Makefile
          src/display/Makefile
          src/input/Makefile
          src/capture/Makefile

@@ -1,1 +1,1 @@
-SUBDIRS = util display capture input frontend
+SUBDIRS = util display capture input audiotest frontend

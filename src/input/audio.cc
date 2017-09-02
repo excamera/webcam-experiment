@@ -24,16 +24,14 @@ string AudioReader::read( const ssize_t size )
 {
   int error;
 
-  static const size_t BUFFER_SIZE = 1048576;
-  char buffer[ BUFFER_SIZE ];
+  static constexpr size_t BUFFER_SIZE = 1048576;
+  char buffer[ BUFFER_SIZE ] = {0};
 
-  ssize_t rsize = pa_simple_read( source_.get(), buffer, size, &error );
-
-  if ( rsize < 0 or rsize > size ) {
+  if ( pa_simple_read( source_.get(), buffer, size, &error ) < 0 ) {
     throw runtime_error( string( "pa_simple_read(): " ) + pa_strerror( error ) );
   }
 
-  return string( buffer, rsize );
+  return string( buffer, size );
 }
 
 AudioWriter::AudioWriter( const string & output_device,
