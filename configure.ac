@@ -25,6 +25,7 @@ PKG_CHECK_MODULES([AVCODEC], [libavcodec])
 PKG_CHECK_MODULES([AVUTIL], [libavutil])
 PKG_CHECK_MODULES([AVFILTER], [libavfilter])
 PKG_CHECK_MODULES([AVDEVICE], [libavdevice])
+PKG_CHECK_MODULES([SWSCALE], [libswscale])
 
 PKG_CHECK_MODULES([GL], [gl])
 PKG_CHECK_MODULES([GLU], [glu])
