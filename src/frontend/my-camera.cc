@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <unistd.h>
+#include <getopt.h>
 
 #include <mutex>
 #include <list>
@@ -16,16 +17,42 @@
 
 using namespace std;
 
-int main( int argc, char const * argv[] )
+int main( int argc, char * argv[] )
 {
   const uint16_t width = 1280;
   const uint16_t height = 720;
 
-  if ( argc != 2 ) {
-    cerr << "usage: " << argv[ 0 ] << " camera" << endl;
+  string camera_path { "/dev/video0" };
+  double fps = 30;
+
+  constexpr option options[] = {
+    { "camera", required_argument, NULL, 'c' },
+    { "fps",    required_argument, NULL, 'f' },
+    { 0, 0, 0, 0 }
+  };
+
+  while ( true ) {
+    const int opt = getopt_long( argc, argv, "c:f:", options, NULL );
+
+    if ( opt == -1 ) {
+      break;
+    }
+
+    switch ( opt ) {
+    case 'c':
+      camera_path = optarg;
+      break;
+
+    case 'f':
+      fps = stod( optarg );
+      break;
+
+    default:
+      throw runtime_error( "invalid option" );
+    }
   }
 
-  Camera camera( width, height, 1 << 20, 24, V4L2_PIX_FMT_MJPEG, argv[ 1 ] );
+  Camera camera( width, height, 1 << 20, 24, V4L2_PIX_FMT_MJPEG, camera_path );
 
   mutex q_lock;
   list<shared_ptr<BaseRaster>> q;
@@ -60,8 +87,6 @@ int main( int argc, char const * argv[] )
       }
     }
   );
-
-  const uint8_t fps = 30;
 
   const auto interval_between_frames = chrono::microseconds( int( 1.0e6 / fps ) );
   auto next_frame_is_due = chrono::system_clock::now();
