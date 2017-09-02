@@ -12,11 +12,15 @@
 
 using namespace std;
 
-#define DEVNAME "alsa_input.usb-046d_C922_Pro_Stream_Webcam_6BB339DF-02.analog-stereo"
 #define BUFSIZE 1024
 
-int main( int, char * [] )
+int main( int argc, char * argv[] )
 {
+  if ( argc != 2 ) {
+    cerr << "usage: " << argv[ 0 ] << " device-name" << endl;
+    return EXIT_FAILURE;
+  }
+  
   pa_sample_spec ss;
   ss.format = PA_SAMPLE_S16LE;
   ss.rate = 44100;
@@ -26,7 +30,7 @@ int main( int, char * [] )
   ba.maxlength = 1 << 16;
   ba.prebuf = 1024;
 
-  AudioReader ar { DEVNAME, ss, ba };
+  AudioReader ar { argv[ 1 ], ss, ba };
   FileDescriptor stdout_fd { STDOUT_FILENO };
 
   while ( true ) {
