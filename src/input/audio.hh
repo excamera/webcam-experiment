@@ -25,4 +25,17 @@ public:
   std::string read( const ssize_t buffer_size );
 };
 
+class AudioWriter
+{
+private:
+  std::unique_ptr<pa_simple, PADeleter> sink_;
+
+public:
+  AudioWriter( const std::string & output_device,
+               const pa_sample_spec & ss,
+               const pa_buffer_attr & ba );
+
+  void write( const std::string & data );
+};
+
 #endif /* AUDIO_HH */
