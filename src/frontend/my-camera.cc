@@ -7,13 +7,14 @@
 #include <getopt.h>
 
 #include <mutex>
-#include <list>
+#include <queue>
 #include <thread>
 #include <memory>
 
 #include "raster.hh"
 #include "display.hh"
 #include "camera.hh"
+#include "audio.hh"
 
 using namespace std;
 
@@ -23,16 +24,20 @@ int main( int argc, char * argv[] )
   const uint16_t height = 720;
 
   string camera_path { "/dev/video0" };
+  string audio_source = "";
+  string audio_sink = "";
   double fps = 30;
 
   constexpr option options[] = {
-    { "camera", required_argument, NULL, 'c' },
-    { "fps",    required_argument, NULL, 'f' },
+    { "camera",       required_argument, NULL, 'c' },
+    { "fps",          required_argument, NULL, 'f' },
+    { "audio-source", required_argument, NULL, 'a' },
+    { "audio-sink",   required_argument, NULL, 'A' },
     { 0, 0, 0, 0 }
   };
 
   while ( true ) {
-    const int opt = getopt_long( argc, argv, "c:f:", options, NULL );
+    const int opt = getopt_long( argc, argv, "", options, NULL );
 
     if ( opt == -1 ) {
       break;
@@ -47,17 +52,38 @@ int main( int argc, char * argv[] )
       fps = stod( optarg );
       break;
 
+    case 'a':
+      audio_source = optarg;
+      break;
+
+    case 'A':
+      audio_sink = optarg;
+      break;
+
     default:
       throw runtime_error( "invalid option" );
     }
   }
 
-  Camera camera( width, height, 1 << 20, 24, V4L2_PIX_FMT_MJPEG, camera_path );
+  pa_sample_spec ss;
+  ss.format = PA_SAMPLE_S16LE;
+  ss.rate = 44100;
+  ss.channels = 2;
 
-  mutex q_lock;
-  list<shared_ptr<BaseRaster>> q;
+  pa_buffer_attr ba;
+  ba.maxlength = 1 << 16;
+  ba.prebuf = 1024;
+  ba.fragsize = 1024;
 
-  thread t(
+  AudioReader audio_reader { audio_source, ss, ba };
+  AudioWriter audio_writer { audio_sink, ss, ba };
+
+  Camera camera { width, height, 1 << 20, 24, V4L2_PIX_FMT_MJPEG, camera_path };
+
+  mutex video_frame_lock;
+  queue<shared_ptr<BaseRaster>> q;
+
+  thread video_display_thread {
     [&]()
     {
       BaseRaster raster( width, height, width, height );
@@ -68,11 +94,11 @@ int main( int argc, char * argv[] )
         bool set = false;
 
         {
-          lock_guard<mutex> lg( q_lock );
+          lock_guard<mutex> lg( video_frame_lock );
 
           if ( q.size() > 0 ) {
             r = q.front();
-            q.pop_front();
+            q.pop();
             set = true;
           }
         }
@@ -86,7 +112,7 @@ int main( int argc, char * argv[] )
         }
       }
     }
-  );
+  };
 
   const auto interval_between_frames = chrono::microseconds( int( 1.0e6 / fps ) );
   auto next_frame_is_due = chrono::system_clock::now();
@@ -99,9 +125,9 @@ int main( int argc, char * argv[] )
     shared_ptr<BaseRaster> r = unique_ptr<BaseRaster>( new BaseRaster { width, height, width, height } );
     camera.get_next_frame( *r.get() );
     {
-      lock_guard<mutex> lg( q_lock );
+      lock_guard<mutex> lg( video_frame_lock );
       if ( q.size() < 1 ) {
-        q.push_back( r );
+        q.push( r );
       }
     }
     auto get_raster_t2 = chrono::high_resolution_clock::now();
