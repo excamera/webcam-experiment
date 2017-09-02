@@ -12,7 +12,8 @@ AudioReader::AudioReader( const string & input_device,
 
   int error;
   source_.reset( pa_simple_new( NULL, "source", PA_STREAM_RECORD,
-                                input_device.c_str(), "record", &ss, NULL, &ba,
+                                input_device.length() ? input_device.c_str() : nullptr,
+                                "record", &ss, NULL, &ba,
                                 &error ) );
 
   if ( source_ == nullptr ) {
@@ -41,7 +42,8 @@ AudioWriter::AudioWriter( const string & output_device,
 {
   int error;
   sink_.reset( pa_simple_new( NULL, "sink", PA_STREAM_PLAYBACK,
-                              output_device.c_str(), "playback", &ss, NULL, &ba,
+                              output_device.length() ? output_device.c_str() : nullptr,
+                              "playback", &ss, NULL, &ba,
                               &error ) );
 
   if ( sink_ == nullptr ) {
