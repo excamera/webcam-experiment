@@ -61,7 +61,14 @@ int main( int argc, char const * argv[] )
     }
   );
 
+  const uint8_t fps = 30;
+
+  const auto interval_between_frames = chrono::microseconds( int( 1.0e6 / fps ) );
+  auto next_frame_is_due = chrono::system_clock::now();
+
   while ( true ) {
+    this_thread::sleep_until( next_frame_is_due );
+    next_frame_is_due += interval_between_frames;
     auto get_raster_t1 = chrono::high_resolution_clock::now();
 
     shared_ptr<BaseRaster> r = unique_ptr<BaseRaster>( new BaseRaster { width, height, width, height } );
