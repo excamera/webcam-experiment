@@ -103,15 +103,15 @@ void Camera::get_next_frame( BaseRaster & raster )
     auto decode_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(decode_raster_t2 - decode_raster_t1);
     std::cout << "decode_raster:\t" << decode_raster_time.count() << "\n";
 
-    auto degrade_raster_t1 = std::chrono::high_resolution_clock::now();
-    degrader_.degrade( degrader_.encoder_frame, degrader_.decoder_frame );
-    auto degrade_raster_t2 = std::chrono::high_resolution_clock::now();
-    auto degrade_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(degrade_raster_t2 - degrade_raster_t1);
-    std::cout << "degrade_raster:\t" << degrade_raster_time.count() << "\n";
+    // auto degrade_raster_t1 = std::chrono::high_resolution_clock::now();
+    // degrader_.degrade( degrader_.encoder_frame, degrader_.decoder_frame );
+    // auto degrade_raster_t2 = std::chrono::high_resolution_clock::now();
+    // auto degrade_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(degrade_raster_t2 - degrade_raster_t1);
+    // std::cout << "degrade_raster:\t" << degrade_raster_time.count() << "\n";
 
-    //memcpy( degrader_.decoder_frame->data[0], degrader_.encoder_frame->data[0], width_ * height_ );
-    //memcpy( degrader_.decoder_frame->data[1], degrader_.encoder_frame->data[1], width_ * height_ / 4 );
-    //memcpy( degrader_.decoder_frame->data[2], degrader_.encoder_frame->data[2], width_ * height_ / 4 );
+    memcpy( degrader_.decoder_frame->data[0], degrader_.encoder_frame->data[0], width_ * height_ );
+    memcpy( degrader_.decoder_frame->data[1], degrader_.encoder_frame->data[1], width_ * height_ / 4 );
+    memcpy( degrader_.decoder_frame->data[2], degrader_.encoder_frame->data[2], width_ * height_ / 4 );
 
     memcpy( &raster.Y().at( 0, 0 ), degrader_.decoder_frame->data[0], width_ * height_ );
     memcpy( &raster.U().at( 0, 0 ), degrader_.decoder_frame->data[1], width_ * height_ / 4 );

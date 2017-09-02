@@ -63,7 +63,7 @@ int main( int argc, char const * argv[] )
         auto get_raster_t2 = std::chrono::high_resolution_clock::now();
         auto get_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(get_raster_t2 - get_raster_t1);
         //std::cout << "get_raster: " << get_raster_time.count() << "\n";
-        usleep(1000);
+        //usleep(1000);
     }        
 
     return 0;
