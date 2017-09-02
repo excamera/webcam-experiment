@@ -19,7 +19,7 @@ unordered_set<uint32_t> SUPPORTED_FORMATS {
 };
 
 Camera::Camera( const uint16_t width, const uint16_t height,
-                const size_t bitrate, const size_t quantizer, 
+                const size_t bitrate, const size_t quantizer,
                 const uint32_t pixel_format, const string device )
   : width_( width ), height_( height ),
     camera_fd_( SystemCall( "open camera", open( device.c_str(), O_RDWR ) ) ),
