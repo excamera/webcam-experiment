@@ -24,7 +24,7 @@ int main( int, char * [] )
 
   pa_buffer_attr ba;
   ba.maxlength = 1 << 24;
-  ba.fragsize = 1024;
+  ba.prebuf = 1024;
 
   AudioWriter aw { DEVNAME, ss, ba };
   FileDescriptor stdin_fd { STDIN_FILENO };

@@ -20,7 +20,7 @@ int main( int argc, char * argv[] )
     cerr << "usage: " << argv[ 0 ] << " device-name" << endl;
     return EXIT_FAILURE;
   }
-  
+
   pa_sample_spec ss;
   ss.format = PA_SAMPLE_S16LE;
   ss.rate = 44100;
@@ -28,7 +28,7 @@ int main( int argc, char * argv[] )
 
   pa_buffer_attr ba;
   ba.maxlength = 1 << 16;
-  ba.prebuf = 1024;
+  ba.fragsize = 128;
 
   AudioReader ar { argv[ 1 ], ss, ba };
   FileDescriptor stdout_fd { STDOUT_FILENO };
