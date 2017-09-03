@@ -76,19 +76,21 @@ int main( int argc, char * argv[] )
   size_t audio_bytes_per_frame = pa_bytes_per_second( &ss ) / fps;
 
   pa_buffer_attr ba;
-  ba.maxlength = audio_bytes_per_frame;
+  ba.maxlength = 4 * audio_bytes_per_frame;
   ba.prebuf = audio_bytes_per_frame;
   ba.fragsize = audio_bytes_per_frame;
 
   AudioReader audio_reader { audio_source, ss, ba };
-  AudioWriter audio_writer { audio_sink, ss, ba };
 
   /* CAMERA */
-  Camera camera { width, height, 1 << 20, 24, V4L2_PIX_FMT_MJPEG, camera_path };
+  Camera camera { width, height, 1 << 20, 40, V4L2_PIX_FMT_NV12, camera_path };
 
   /* VIDEO DISPLAY */
   BaseRaster current_video_frame { width, height, width, height };
   BaseRaster next_video_frame { width, height, width, height };
+
+  string current_audio_frame;
+  string next_audio_frame;
 
   mutex video_frame_mtx;
   mutex audio_frame_lock;
@@ -109,6 +111,19 @@ int main( int argc, char * argv[] )
     }
   };
 
+  thread audio_play_thread {
+    [&]()
+    {
+      AudioWriter audio_writer { audio_sink, ss, ba };
+
+      while ( true ) {
+        unique_lock<mutex> lock { video_frame_mtx };
+        frame_cv.wait( lock );
+        audio_writer.write( current_audio_frame );
+      }
+    }
+  };
+
   const auto interval_between_frames = chrono::microseconds( int( 1.0e6 / fps ) );
   auto next_frame_is_due = chrono::system_clock::now();
 
@@ -117,10 +132,12 @@ int main( int argc, char * argv[] )
     next_frame_is_due += interval_between_frames;
 
     camera.get_next_frame( next_video_frame );
+    next_audio_frame = audio_reader.read( audio_bytes_per_frame );
 
     {
       lock_guard<mutex> lg { video_frame_mtx };
       swap( next_video_frame, current_video_frame );
+      swap( next_audio_frame, current_audio_frame );
       frame_cv.notify_all();
     }
   }
