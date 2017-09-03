@@ -1,15 +1,17 @@
 /* -*-mode:c++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 
+#include <getopt.h>
+#include <unistd.h>
 #include <chrono>
 #include <iostream>
 #include <string>
-#include <unistd.h>
-#include <getopt.h>
-
 #include <mutex>
+#include <condition_variable>
 #include <queue>
 #include <thread>
 #include <memory>
+
+#include <pulse/sample.h>
 
 #include "raster.hh"
 #include "display.hh"
@@ -26,7 +28,7 @@ int main( int argc, char * argv[] )
   string camera_path { "/dev/video0" };
   string audio_source = "";
   string audio_sink = "";
-  double fps = 30;
+  unsigned int fps = 30;
 
   constexpr option options[] = {
     { "camera",       required_argument, NULL, 'c' },
@@ -49,7 +51,7 @@ int main( int argc, char * argv[] )
       break;
 
     case 'f':
-      fps = stod( optarg );
+      fps = stoul( optarg );
       break;
 
     case 'a':
@@ -65,51 +67,44 @@ int main( int argc, char * argv[] )
     }
   }
 
+  /* AUDIO STUFF */
   pa_sample_spec ss;
   ss.format = PA_SAMPLE_S16LE;
   ss.rate = 44100;
   ss.channels = 2;
 
+  size_t audio_bytes_per_frame = pa_bytes_per_second( &ss ) / fps;
+
   pa_buffer_attr ba;
-  ba.maxlength = 1 << 16;
-  ba.prebuf = 1024;
-  ba.fragsize = 1024;
+  ba.maxlength = audio_bytes_per_frame;
+  ba.prebuf = audio_bytes_per_frame;
+  ba.fragsize = audio_bytes_per_frame;
 
   AudioReader audio_reader { audio_source, ss, ba };
   AudioWriter audio_writer { audio_sink, ss, ba };
 
+  /* CAMERA */
   Camera camera { width, height, 1 << 20, 24, V4L2_PIX_FMT_MJPEG, camera_path };
 
-  mutex video_frame_lock;
-  queue<shared_ptr<BaseRaster>> q;
+  /* VIDEO DISPLAY */
+  BaseRaster current_video_frame { width, height, width, height };
+  BaseRaster next_video_frame { width, height, width, height };
+
+  mutex video_frame_mtx;
+  mutex audio_frame_lock;
+  condition_variable frame_cv;
+
+  queue<string> audio_frame_queue;
 
   thread video_display_thread {
     [&]()
     {
-      BaseRaster raster( width, height, width, height );
-      VideoDisplay display( raster );
-      shared_ptr<BaseRaster> r;
+      VideoDisplay display { current_video_frame };
 
       while ( true ) {
-        bool set = false;
-
-        {
-          lock_guard<mutex> lg( video_frame_lock );
-
-          if ( q.size() > 0 ) {
-            r = q.front();
-            q.pop();
-            set = true;
-          }
-        }
-
-        if ( set ) {
-          auto display_raster_t1 = chrono::high_resolution_clock::now();
-          display.draw( *r.get() );
-          auto display_raster_t2 = chrono::high_resolution_clock::now();
-          auto display_raster_time = chrono::duration_cast<chrono::duration<double>>( display_raster_t2 - display_raster_t1 );
-          cout << "display_raster: " << display_raster_time.count() << "\n";
-        }
+        unique_lock<mutex> lock { video_frame_mtx };
+        frame_cv.wait( lock );
+        display.draw( current_video_frame );
       }
     }
   };
@@ -120,21 +115,22 @@ int main( int argc, char * argv[] )
   while ( true ) {
     this_thread::sleep_until( next_frame_is_due );
     next_frame_is_due += interval_between_frames;
-    auto get_raster_t1 = chrono::high_resolution_clock::now();
 
-    shared_ptr<BaseRaster> r = unique_ptr<BaseRaster>( new BaseRaster { width, height, width, height } );
-    camera.get_next_frame( *r.get() );
+    camera.get_next_frame( next_video_frame );
+
     {
-      lock_guard<mutex> lg( video_frame_lock );
-      if ( q.size() < 1 ) {
-        q.push( r );
-      }
+      lock_guard<mutex> lg { video_frame_mtx };
+      swap( next_video_frame, current_video_frame );
+      frame_cv.notify_all();
     }
-    auto get_raster_t2 = chrono::high_resolution_clock::now();
-    auto get_raster_time = chrono::duration_cast<chrono::duration<double>>( get_raster_t2 - get_raster_t1 );
-    cout << "get_raster: " << get_raster_time.count() << "\n";
-    //usleep(1000);
   }
 
   return 0;
 }
+
+/*
+auto get_raster_t1 = chrono::high_resolution_clock::now();
+auto get_raster_t2 = chrono::high_resolution_clock::now();
+auto get_raster_time = chrono::duration_cast<chrono::duration<double>>( get_raster_t2 - get_raster_t1 );
+cout << "get_raster: " << get_raster_time.count() << "\n";
+*/
