@@ -71,7 +71,7 @@ int main( int argc, char * argv[] )
   AudioReader audio_reader { audio_source, ss, ba };
 
   /* CAMERA */
-  Camera camera { width, height, 1 << 20, 40, V4L2_PIX_FMT_NV12, camera_path };
+  Camera camera { width, height, 1 << 20, 40, V4L2_PIX_FMT_MJPEG, camera_path };
 
   /* VIDEO DISPLAY */
   BaseRaster current_video_frame { width, height, width, height };
