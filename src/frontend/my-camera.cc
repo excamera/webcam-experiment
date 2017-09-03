@@ -46,24 +46,12 @@ int main( int argc, char * argv[] )
     }
 
     switch ( opt ) {
-    case 'c':
-      camera_path = optarg;
-      break;
+    case 'c': camera_path = optarg; break;
+    case 'f': fps = stoul( optarg ); break;
+    case 'a': audio_source = optarg; break;
+    case 'A': audio_sink = optarg; break;
 
-    case 'f':
-      fps = stoul( optarg );
-      break;
-
-    case 'a':
-      audio_source = optarg;
-      break;
-
-    case 'A':
-      audio_sink = optarg;
-      break;
-
-    default:
-      throw runtime_error( "invalid option" );
+    default: throw runtime_error( "invalid option" );
     }
   }
 
