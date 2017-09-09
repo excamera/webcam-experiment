@@ -80,3 +80,53 @@ void BaseRaster::dump( FILE * file ) const
     }
   }
 }
+
+
+BaseRasterQueue::BaseRasterQueue(const size_t capacity,
+                                  const uint16_t display_width,
+                                  const uint16_t display_height,
+                                  const uint16_t width,
+                                  const uint16_t height ) :
+  _capacity(capacity),
+  _occupancy(0),
+  back_idx(0),
+  front_idx(0),
+  capacity(_capacity),
+  occupancy(_occupancy),
+  array()
+{
+  
+  for(size_t i = 0; i < capacity; i++){
+    BaseRaster b{display_width, display_height, width, height};
+    array.emplace_back(std::move(b));
+  }
+}
+  
+BaseRasterQueue::~BaseRasterQueue()
+{}
+
+BaseRaster& BaseRasterQueue::front() {
+  return array.at(front_idx);
+}
+
+void BaseRasterQueue::pop_front() {
+  if(occupancy > 0){
+    front_idx = (front_idx + 1) % capacity;
+    --_occupancy;
+  }
+  else{
+    throw runtime_error("Queue is empty!");
+  }
+}
+
+BaseRaster& BaseRasterQueue::back() {
+  if(occupancy < capacity){
+    BaseRaster &b = array.at(back_idx);
+    back_idx = (back_idx + 1) % capacity;
+    ++_occupancy;
+    return b;
+  }
+  else{
+    throw runtime_error("Queue is full!");
+  }
+}  

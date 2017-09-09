@@ -1,9 +1,11 @@
 /* -*-mode:c++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 
+#include <atomic>
 #include <getopt.h>
 #include <unistd.h>
 #include <chrono>
 #include <iostream>
+#include <list>
 #include <string>
 #include <mutex>
 #include <condition_variable>
@@ -29,12 +31,14 @@ int main( int argc, char * argv[] )
   string audio_source = "";
   string audio_sink = "";
   unsigned int fps = 30;
+  size_t delay = 1;
 
   constexpr option options[] = {
     { "camera",       required_argument, NULL, 'c' },
     { "fps",          required_argument, NULL, 'f' },
     { "audio-source", required_argument, NULL, 'a' },
     { "audio-sink",   required_argument, NULL, 'A' },
+    { "delay",   required_argument, NULL, 'd' },
     { 0, 0, 0, 0 }
   };
 
@@ -50,6 +54,7 @@ int main( int argc, char * argv[] )
     case 'f': fps = stoul( optarg ); break;
     case 'a': audio_source = optarg; break;
     case 'A': audio_sink = optarg; break;
+    case 'd': delay = stoul( optarg ); break;
 
     default: throw runtime_error( "invalid option" );
     }
@@ -62,7 +67,8 @@ int main( int argc, char * argv[] )
   ss.channels = 2;
 
   size_t audio_bytes_per_frame = pa_bytes_per_second( &ss ) / fps;
-
+  cout << audio_bytes_per_frame << endl;
+    
   pa_buffer_attr ba;
   ba.maxlength = 4 * audio_bytes_per_frame;
   ba.prebuf = audio_bytes_per_frame;
@@ -74,68 +80,95 @@ int main( int argc, char * argv[] )
   Camera camera { width, height, 1 << 20, 40, V4L2_PIX_FMT_MJPEG, camera_path };
 
   /* VIDEO DISPLAY */
-  BaseRaster current_video_frame { width, height, width, height };
-  BaseRaster next_video_frame { width, height, width, height };
+  BaseRasterQueue video_frames { delay, width, height, width, height };
+  list<string> audio_frames {};
+  
+  atomic<size_t> video_frame_count(0);
+  atomic<size_t> audio_frame_count(0);
 
-  string current_audio_frame;
-  string next_audio_frame;
+  mutex video_mtx;
+  condition_variable video_cv;
 
-  mutex video_frame_mtx;
-  mutex audio_frame_lock;
-  condition_variable frame_cv;
+  mutex audio_mtx;
+  condition_variable audio_cv;
+  
+  thread video_read_thread {
+    [&]()
+      {
+        while(true) {      
+          unique_lock<mutex> ul { video_mtx };            
+          video_cv.wait(ul, [&](){ return video_frames.occupancy < delay; });
+          
+          BaseRaster &r = video_frames.back();
+          camera.get_next_frame( r );
+          video_cv.notify_all();
+        }
+      }
+  };
+  
+  thread video_play_thread {
+    [&]()
+      {
+        BaseRaster v { width, height, width, height };
+        VideoDisplay display { v };
+        
+        while ( true ) {
+          unique_lock<mutex> ul { video_mtx };
+          video_cv.wait(ul, [&](){ return video_frames.occupancy >= delay; });
+          
+          if(video_frames.occupancy >= delay){
+            BaseRaster &r = video_frames.front();
+            video_frame_count.fetch_add(1);
+            
+            while(video_frame_count.load() > audio_frame_count.load()){}
+            display.draw( r );
 
-  queue<string> audio_frame_queue;
+            video_frames.pop_front();
+          }
+          video_cv.notify_all();
+        }
+      }
+  };
 
-  thread video_display_thread {
+  thread audio_read_thread {
     [&]()
     {
-      VideoDisplay display { current_video_frame };
-
       while ( true ) {
-        unique_lock<mutex> lock { video_frame_mtx };
-        frame_cv.wait( lock );
-        display.draw( current_video_frame );
+        string audio_frame = audio_reader.read( audio_bytes_per_frame );
+
+        unique_lock<mutex> ul { audio_mtx };
+        audio_cv.wait(ul, [&](){ return audio_frames.size() < delay; } );
+        audio_frames.push_back(audio_frame);
+        audio_cv.notify_all();        
       }
     }
   };
 
   thread audio_play_thread {
     [&]()
-    {
-      AudioWriter audio_writer { audio_sink, ss, ba };
+      {
+        AudioWriter audio_writer { audio_sink, ss, ba };
+        
+        while ( true ) {
+          string audio_frame;
+          {
+            unique_lock<mutex> ul { audio_mtx };
+            audio_cv.wait(ul, [&](){ return audio_frames.size() >= delay; });
+            
+            audio_frame = audio_frames.front();
+            audio_frames.pop_front();
+            audio_frame_count.fetch_add(1);
+            audio_cv.notify_all();
+          }
 
-      while ( true ) {
-        unique_lock<mutex> lock { video_frame_mtx };
-        frame_cv.wait( lock );
-        audio_writer.write( current_audio_frame );
+          while(audio_frame_count.load() > video_frame_count.load()){}
+          audio_writer.write( audio_frame );
+
+        }
       }
-    }
   };
-
-  const auto interval_between_frames = chrono::microseconds( int( 1.0e6 / fps ) );
-  auto next_frame_is_due = chrono::system_clock::now();
-
-  while ( true ) {
-    this_thread::sleep_until( next_frame_is_due );
-    next_frame_is_due += interval_between_frames;
-
-    camera.get_next_frame( next_video_frame );
-    next_audio_frame = audio_reader.read( audio_bytes_per_frame );
-
-    {
-      lock_guard<mutex> lg { video_frame_mtx };
-      swap( next_video_frame, current_video_frame );
-      swap( next_audio_frame, current_audio_frame );
-      frame_cv.notify_all();
-    }
-  }
+  
+  while ( true ) { }
 
   return 0;
 }
-
-/*
-auto get_raster_t1 = chrono::high_resolution_clock::now();
-auto get_raster_t2 = chrono::high_resolution_clock::now();
-auto get_raster_time = chrono::duration_cast<chrono::duration<double>>( get_raster_t2 - get_raster_t1 );
-cout << "get_raster: " << get_raster_time.count() << "\n";
-*/

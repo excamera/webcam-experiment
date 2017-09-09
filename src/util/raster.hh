@@ -63,4 +63,30 @@ public:
   void dump( FILE * file ) const; /* only used for debugging */
 };
 
+class BaseRasterQueue {
+private:
+  const size_t _capacity;
+  size_t _occupancy;
+  size_t front_idx;
+  size_t back_idx;
+
+  std::vector<BaseRaster> array;
+  
+public:
+  const size_t &capacity;
+  const size_t &occupancy;
+  
+  BaseRasterQueue(const size_t queue_length,
+                  const uint16_t display_width,
+                  const uint16_t display_height,
+                  const uint16_t width,
+                  const uint16_t height );
+  ~BaseRasterQueue();
+
+  BaseRaster& front();
+  void pop_front();
+
+  BaseRaster& back();
+};
+
 #endif /* RASTER_HH */
