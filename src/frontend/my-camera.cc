@@ -165,6 +165,7 @@ int main( int argc, char * argv[] )
             memcpy( &r.U().at( 0, 0 ), degrader.decoder_frame->data[1], width * height / 4 );
             memcpy( &r.V().at( 0, 0 ), degrader.decoder_frame->data[2], width * height / 4 );
 
+            while(video_frame_count.load() > audio_frame_count.load()){}
             display.draw( r );
 
             if ( not first_degraded_frame ) {
@@ -215,6 +216,7 @@ int main( int argc, char * argv[] )
             audio_cv.notify_all();
           }
 
+          while(audio_frame_count.load() > video_frame_count.load()){}
           audio_writer.write( audio_frame );
 
         }
