@@ -89,7 +89,8 @@ def run_experiment(runtime=120,
     switch_to_workspace(2)
     run_command('clear')
     run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    Please record your quality of experience on the worksheet (score 1 to 5) \\n   The next video chat will begin in 30 seconds\\n\\n--------------------------------------------------------------------------------\\n\\n"')
-    time.sleep(5)
+
+    time.sleep(1)
     os.system('killall my-camera')
     
 settings = [
@@ -126,9 +127,9 @@ settings = [
         'quantizer' : 26,
         'delay' : 1
     }
-] + settings
+] + [settings[0]]
 
-experiment_time = 30
+experiment_time = 1
 
 # create the output dir for the results
 if os.path.isdir(args.output_dir):
@@ -163,4 +164,16 @@ for setting in settings:
                    after2=os.path.join(results_dir_path,'after2.y4m')
                    )
 
-    
+
+time.sleep(1)
+switch_to_workspace(1)
+run_command('clear')
+run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    DONE. The user study is now over.\\n\\n--------------------------------------------------------------------------------\\n\\n"')
+
+time.sleep(1)
+
+switch_to_workspace(2)
+run_command('clear')
+run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    DONE. The user study is now over.\\n\\n--------------------------------------------------------------------------------\\n\\n"')
+time.sleep(5)
+os.system('killall my-camera')
