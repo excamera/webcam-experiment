@@ -15,6 +15,7 @@
 
 #include <pulse/sample.h>
 
+#include "h264_degrader.hh"
 #include "raster.hh"
 #include "display.hh"
 #include "camera.hh"
@@ -33,12 +34,17 @@ int main( int argc, char * argv[] )
   unsigned int fps = 30;
   size_t delay = 1;
 
+  string before_filename = "before.raw";
+  string after_filename = "after.raw";
+  
   constexpr option options[] = {
     { "camera",       required_argument, NULL, 'c' },
     { "fps",          required_argument, NULL, 'f' },
     { "audio-source", required_argument, NULL, 'a' },
     { "audio-sink",   required_argument, NULL, 'A' },
     { "delay",   required_argument, NULL, 'd' },
+    { "beforeFile",   required_argument, NULL, 'x' },
+    { "afterFile",   required_argument, NULL, 'y' },
     { 0, 0, 0, 0 }
   };
 
@@ -55,6 +61,8 @@ int main( int argc, char * argv[] )
     case 'a': audio_source = optarg; break;
     case 'A': audio_sink = optarg; break;
     case 'd': delay = stoul( optarg ); break;
+    case 'x': before_filename = optarg; break;
+    case 'y': after_filename = optarg; break;
 
     default: throw runtime_error( "invalid option" );
     }
@@ -77,8 +85,8 @@ int main( int argc, char * argv[] )
   AudioReader audio_reader { audio_source, ss, ba };
 
   /* CAMERA */
-  Camera camera { width, height, 1 << 20, 40, V4L2_PIX_FMT_MJPEG, camera_path };
-
+  Camera camera { width, height, 1 << 20, 40, before_filename, after_filename, V4L2_PIX_FMT_MJPEG, camera_path };
+  
   /* VIDEO DISPLAY */
   BaseRasterQueue video_frames { delay, width, height, width, height };
   list<string> audio_frames {};
@@ -118,12 +126,17 @@ int main( int argc, char * argv[] )
           
           if(video_frames.occupancy >= delay){
             BaseRaster &r = video_frames.front();
+            ul.unlock();
             video_frame_count.fetch_add(1);
+            video_cv.notify_all();
+
+            // TODO(sadjad) call degrader...
             
-            while(video_frame_count.load() > audio_frame_count.load()){}
             display.draw( r );
 
+            ul.lock();
             video_frames.pop_front();
+            ul.unlock();
           }
           video_cv.notify_all();
         }
@@ -160,8 +173,7 @@ int main( int argc, char * argv[] )
             audio_frame_count.fetch_add(1);
             audio_cv.notify_all();
           }
-
-          while(audio_frame_count.load() > video_frame_count.load()){}
+          
           audio_writer.write( audio_frame );
 
         }

@@ -36,12 +36,19 @@ private:
   H264_degrader degrader_;
   MJPEGDecoder mjpeg_decoder_;
 
+  std::string before_filename;
+  std::string after_filename;
+  FILE* before_file;
+  FILE* after_file;
+  
 public:
   Camera( const uint16_t width, const uint16_t height,
           const size_t bitrate, const size_t quantizer,
+          const std::string before_filename,
+          const std::string after_filename,
           const uint32_t pixel_format = V4L2_PIX_FMT_NV12,
-          const std::string device = "/dev/video0" );
-
+          const std::string device = "/dev/video0");
+       
   ~Camera();
 
   void get_next_frame( BaseRaster & raster );
