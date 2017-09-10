@@ -20,27 +20,13 @@ unordered_set<uint32_t> SUPPORTED_FORMATS {
 
 Camera::Camera( const uint16_t width, const uint16_t height,
                 const size_t bitrate, const size_t quantizer,
-                const string before_filename,
-                const string after_filename,
-                const uint32_t pixel_format, const string device)
+                const uint32_t pixel_format, const string device )
   : width_( width ), height_( height ),
     camera_fd_( SystemCall( "open camera", open( device.c_str(), O_RDWR ) ) ),
     mmap_region_(), pixel_format_( pixel_format ), buffer_info_(), type_(),
     degrader_( width_, height_, bitrate, quantizer ),
-    mjpeg_decoder_( width_, height_ ),
-    before_filename(before_filename),
-    after_filename(after_filename)
+    mjpeg_decoder_( width_, height_ )
 {
-
-  before_file = fopen(before_filename.c_str(), "w");
-  if (before_file < 0) {
-    throw runtime_error("Could not open before file " + before_filename);
-  }
-  after_file = fopen(after_filename.c_str(), "w");
-  if (after_file < 0) {
-    throw runtime_error("Could not open after file " + after_filename);
-  }
-  
   v4l2_capability cap;
   SystemCall( "ioctl", ioctl( camera_fd_.fd_num(), VIDIOC_QUERYCAP, &cap ) );
 
@@ -95,9 +81,6 @@ Camera::Camera( const uint16_t width, const uint16_t height,
 Camera::~Camera()
 {
   SystemCall( "stream off", ioctl( camera_fd_.fd_num(), VIDIOC_STREAMOFF, &type_ ) );
-
-  fclose(before_file);
-  fclose(after_file);
 }
 
 void Camera::get_next_frame( BaseRaster & raster )
@@ -118,7 +101,7 @@ void Camera::get_next_frame( BaseRaster & raster )
     mjpeg_decoder_.decode( src, buffer_info_.length, degrader_.decoder_frame );
     auto decode_raster_t2 = std::chrono::high_resolution_clock::now();
     auto decode_raster_time = std::chrono::duration_cast<std::chrono::duration<double>>(decode_raster_t2 - decode_raster_t1);
-    std::cout << "decode_raster:\t" << decode_raster_time.count() << " " << before_filename <<  " " << after_filename << "\n";
+    std::cout << "decode_raster:\t" << decode_raster_time.count() << endl;
 
     memcpy( &raster.Y().at( 0, 0 ), degrader_.decoder_frame->data[0], width_ * height_ );
     memcpy( &raster.U().at( 0, 0 ), degrader_.decoder_frame->data[1], width_ * height_ / 4 );
