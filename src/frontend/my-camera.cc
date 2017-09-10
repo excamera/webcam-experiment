@@ -35,8 +35,8 @@ int main( int argc, char * argv[] )
   size_t delay = 1;
   size_t quantizer = 24;
 
-  string before_filename = "before.raw";
-  string after_filename = "after.raw";
+  string before_filename = "before.y4m";
+  string after_filename = "after.y4m";
 
   constexpr option options[] = {
     { "camera",       required_argument, NULL, 'c' },
