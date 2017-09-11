@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import datetime
 import time
@@ -61,7 +63,7 @@ def run_experiment(runtime=120,
     reset_workspace()
     
     switch_to_workspace(1)
-    run_command('cd /home/jemmons/projects/webcam-experiment/src/frontend')
+    run_command('cd /home/captaineo/projects/webcam-experiment/src/frontend')
     run_command('./run2.sh --before-file {} --after-file {} --quantizer {} --delay {}'.format( \
         before1, after1, str(quantizer), str(delay) \
     ))
@@ -69,7 +71,7 @@ def run_experiment(runtime=120,
     maximize_window()
     
     switch_to_workspace(2)
-    run_command('cd /home/jemmons/projects/webcam-experiment/src/frontend')
+    run_command('cd /home/captaineo/projects/webcam-experiment/src/frontend')
     run_command('./run1.sh --before-file {} --after-file {} --quantizer {} --delay {}'.format( \
         before2, after2, str(quantizer), str(delay) \
     ))
@@ -95,16 +97,12 @@ def run_experiment(runtime=120,
     
 settings = [
     {
-        'quantizer' : 26,
-        'delay' : 8
-    },
-    {
         'quantizer' : 33,
-        'delay' : 8
+        'delay' : 1
     },
     {
         'quantizer' : 40,
-        'delay' : 8
+        'delay' : 1
     },
     {
         'quantizer' : 26,
@@ -117,6 +115,30 @@ settings = [
     {
         'quantizer' : 40,
         'delay' : 15
+    },
+    {
+        'quantizer' : 26,
+        'delay' : 30
+    },
+    {
+        'quantizer' : 33,
+        'delay' : 30
+    },
+    {
+        'quantizer' : 40,
+        'delay' : 30
+    },
+    {
+        'quantizer' : 26,
+        'delay' : 60
+    },
+    {
+        'quantizer' : 33,
+        'delay' : 60
+    },
+    {
+        'quantizer' : 40,
+        'delay' : 60
     }
     ]
 
@@ -127,9 +149,9 @@ settings = [
         'quantizer' : 26,
         'delay' : 1
     }
-] + [settings[0]]
+] + settings
 
-experiment_time = 1
+experiment_time = 120
 
 # create the output dir for the results
 if os.path.isdir(args.output_dir):
