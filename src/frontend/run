@@ -66,18 +66,18 @@ def run_experiment(runtime=120,
     
     switch_to_workspace(1)
     run_command('cd /home/captaineo/projects/webcam-experiment/src/frontend')
-    run_command('./run2.sh --before-file {} --after-file {} --quantizer {} --delay {}'.format( \
+    run_command('./run1.sh --before-file {} --after-file {} --quantizer {} --delay {}'.format( \
         before1, after1, str(quantizer), str(delay) \
     ))
-    time.sleep(3)
+    time.sleep(5)
     maximize_window()
     
     switch_to_workspace(2)
     run_command('cd /home/captaineo/projects/webcam-experiment/src/frontend')
-    run_command('./run1.sh --before-file {} --after-file {} --quantizer {} --delay {}'.format( \
+    run_command('./run2.sh --before-file {} --after-file {} --quantizer {} --delay {}'.format( \
         before2, after2, str(quantizer), str(delay) \
     ))
-    time.sleep(3)
+    time.sleep(5)
     maximize_window()
     
     time.sleep(runtime)
@@ -86,15 +86,15 @@ def run_experiment(runtime=120,
 
     switch_to_workspace(1)
     run_command('clear')
-    run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    You just completed test number: {}\\n\\n    Please record your quality of experience on the worksheet (1 to 5 score)\\n    The next video chat will begin in 30 seconds\\n\\n--------------------------------------------------------------------------------\\n\\n"'.format(num))
+    run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    You just completed test number: {}\\n\\n    Please record your quality of experience on the worksheet (1 to 5 score)\\n    The next video chat will begin in 15 seconds\\n\\n--------------------------------------------------------------------------------\\n\\n"'.format(num))
     time.sleep(1)
     
     switch_to_workspace(2)
     run_command('clear')
-    run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    You just completed test number: {}\\n\\n    Please record your quality of experience on the worksheet (1 to 5 score)\\n    The next video chat will begin in 30 seconds\\n\\n--------------------------------------------------------------------------------\\n\\n"'.format(num))
+    run_command('echo -e "\\n\\n--------------------------------------------------------------------------------\\n\\n    You just completed test number: {}\\n\\n    Please record your quality of experience on the worksheet (1 to 5 score)\\n    The next video chat will begin in 15 seconds\\n\\n--------------------------------------------------------------------------------\\n\\n"'.format(num))
     num += 1
 
-    time.sleep(25)
+    time.sleep(15)
     os.system('killall my-camera')
     
 settings = [
@@ -153,7 +153,7 @@ settings = [
     }
 ] + settings
 
-experiment_time = 120
+experiment_time = 60
 
 # create the output dir for the results
 if os.path.isdir(args.output_dir):
